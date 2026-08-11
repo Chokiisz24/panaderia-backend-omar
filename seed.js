@@ -7,7 +7,7 @@ const pool = new Pool({
 });
 
 const sql = `
--- 1. Crear tablas
+-- 1. Crear TODAS las tablas
 CREATE TABLE IF NOT EXISTS ingredientes (
     id SERIAL PRIMARY KEY,
     nombre VARCHAR(100) NOT NULL,
@@ -39,8 +39,15 @@ CREATE TABLE IF NOT EXISTS mermas_log (
     fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- 2. Limpiar datos previos
-TRUNCATE TABLE receta_ingredientes, mermas_log, recetas, ingredientes RESTART IDENTITY CASCADE;
+CREATE TABLE IF NOT EXISTS produccion_log (
+    id SERIAL PRIMARY KEY,
+    receta_id INT REFERENCES recetas(id) ON DELETE CASCADE,
+    cantidad_producida NUMERIC(10,2) NOT NULL,
+    fecha DATE DEFAULT CURRENT_DATE
+);
+
+-- 2. Limpiar datos previos de todas las tablas
+TRUNCATE TABLE receta_ingredientes, produccion_log, mermas_log, recetas, ingredientes RESTART IDENTITY CASCADE;
 
 -- 3. Insertar ingredientes
 INSERT INTO ingredientes (id, nombre, stock_actual, stock_minimo, stock_maximo, unidad_medida) VALUES
@@ -86,7 +93,7 @@ INSERT INTO ingredientes (id, nombre, stock_actual, stock_minimo, stock_maximo, 
 (40, 'ESCE. AZAHAR', 5000, 500, 10000, 'ml'),
 (41, 'TANG ZONG', 10000, 1000, 20000, 'g');
 
--- 4. Insertar Recetas con sus Totales de Receta / Piezas correspondientes
+-- 4. Insertar Recetas
 INSERT INTO recetas (id, nombre, total_recetas) VALUES
 (1, 'Masa Baguette', 15),
 (2, 'Masa Centeno', 1),
@@ -109,12 +116,6 @@ INSERT INTO recetas (id, nombre, total_recetas) VALUES
 (19, 'Pan Elote', 1),
 (20, 'Pan Plátano', 67);
 
-CREATE TABLE IF NOT EXISTS produccion_log (
-    id SERIAL PRIMARY KEY,
-    receta_id INT REFERENCES recetas(id) ON DELETE CASCADE,
-    cantidad_producida NUMERIC(10,2) NOT NULL,
-    fecha DATE DEFAULT CURRENT_DATE
-);
 -- 5. Insertar Insumos por Receta
 INSERT INTO receta_ingredientes (receta_id, ingrediente_id, cantidad_requerida) VALUES
 (1, 1, 10500), (1, 2, 4500), (1, 7, 360), (1, 8, 60), (1, 18, 4500), (1, 9, 9300), (1, 4, 150), (1, 5, 75), (1, 22, 90), (1, 23, 50),
