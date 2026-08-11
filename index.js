@@ -80,10 +80,7 @@ app.post('/api/mermas', async (req, res) => {
   }
 });
 
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`Servidor corriendo en puerto ${PORT}`));
-
-// Registrar producción
+// 5. Registrar producción
 app.post('/api/produccion', async (req, res) => {
   const { receta_id, cantidad_producida, fecha } = req.body;
   try {
@@ -102,7 +99,35 @@ app.post('/api/produccion', async (req, res) => {
   }
 });
 
-// Obtener resumen de producción filtrado por fecha
+// 6. Actualizar producción de un día específico (Lógica de Edición)
+app.put('/api/produccion/actualizar', async (req, res) => {
+  const { receta_id, fecha, nueva_cantidad } = req.body;
+
+  try {
+    // Reemplazamos los registros previos de ese día para esa receta
+    await pool.query(
+      'DELETE FROM produccion_log WHERE receta_id = $1 AND fecha::date = $2::date',
+      [receta_id, fecha]
+    );
+
+    const cantidadNumerica = parseFloat(nueva_cantidad);
+    
+    // Si la nueva cantidad es mayor a 0, insertamos el nuevo valor
+    if (cantidadNumerica > 0) {
+      await pool.query(
+        'INSERT INTO produccion_log (receta_id, cantidad_producida, fecha) VALUES ($1, $2, $3::date)',
+        [receta_id, cantidadNumerica, fecha]
+      );
+    }
+
+    res.json({ mensaje: 'Producción actualizada correctamente' });
+  } catch (err) {
+    console.error('Error al actualizar producción:', err);
+    res.status(500).json({ error: 'Error interno al actualizar la producción' });
+  }
+});
+
+// 7. Obtener resumen de producción filtrado por fecha
 app.get('/api/produccion/resumen', async (req, res) => {
   const { fecha } = req.query; // YYYY-MM-DD
   
@@ -126,7 +151,10 @@ app.get('/api/produccion/resumen', async (req, res) => {
     res.json(result.rows);
   } catch (err) {
     console.error('Error en SQL:', err);
-    // IMPORTANTE: Responder con JSON para evitar que la app crashee
     res.status(500).json({ error: 'Error al consultar la base de datos' });
   }
 });
+
+// Iniciar servidor al final del archivo
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => console.log(`Servidor corriendo en puerto ${PORT}`));

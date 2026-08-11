@@ -98,7 +98,7 @@ INSERT INTO ingredientes (id, nombre, stock_actual, stock_minimo, stock_maximo, 
 (41, 'THAN ZONG', 10000, 1000, 20000, 'g'),
 (42, 'ESCE. NARAN MANTE', 5000, 500, 10000, 'ml');
 
--- 4. Registro de Recetas y Metas
+-- 4. Registro de Recetas y Metas (Configurado con sus lotes base por defecto)
 INSERT INTO recetas (id, nombre, total_recetas) VALUES
 (1, 'Masa Baguette', 15),
 (2, 'Masa Centeno', 1),
