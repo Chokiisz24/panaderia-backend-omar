@@ -19,7 +19,8 @@ CREATE TABLE IF NOT EXISTS ingredientes (
 
 CREATE TABLE IF NOT EXISTS recetas (
     id SERIAL PRIMARY KEY,
-    nombre VARCHAR(100) NOT NULL
+    nombre VARCHAR(100) NOT NULL,
+    total_recetas NUMERIC(10,2) DEFAULT 1
 );
 
 CREATE TABLE IF NOT EXISTS receta_ingredientes (
@@ -85,12 +86,28 @@ INSERT INTO ingredientes (id, nombre, stock_actual, stock_minimo, stock_maximo, 
 (40, 'ESCE. AZAHAR', 5000, 500, 10000, 'ml'),
 (41, 'TANG ZONG', 10000, 1000, 20000, 'g');
 
--- 4. Insertar Recetas
-INSERT INTO recetas (id, nombre) VALUES
-(1, 'Masa Baguette'), (2, 'Masa Centeno'), (3, 'Brioche'), (4, 'Pizza'), (5, 'Biga'),
-(6, 'Brioche Caja'), (7, 'Masa Baguette Cacao'), (8, 'Muffin Inglés'), (9, 'Pan Blanco'), (10, 'Masa Croissant'),
-(11, 'Poolish'), (12, 'Focaccia'), (13, 'Hojaldre Simple'), (14, 'Hojaldre Invertido'), (15, 'Rosca 2026'),
-(16, 'Concha'), (17, 'Pan de Muerto 2025'), (18, 'Pan de Muerto Choco 2025'), (19, 'Pan Elote'), (20, 'Pan Plátano');
+-- 4. Insertar Recetas con sus Totales de Receta / Piezas correspondientes
+INSERT INTO recetas (id, nombre, total_recetas) VALUES
+(1, 'Masa Baguette', 15),
+(2, 'Masa Centeno', 1),
+(3, 'Brioche', 5.5),
+(4, 'Pizza', 10),
+(5, 'Biga', 10),
+(6, 'Brioche Caja', 20),
+(7, 'Masa Baguette Cacao', 1),
+(8, 'Muffin Inglés', 1),
+(9, 'Pan Blanco', 1),
+(10, 'Masa Croissant', 1),
+(11, 'Poolish', 1),
+(12, 'Focaccia', 1),
+(13, 'Hojaldre Simple', 1),
+(14, 'Hojaldre Invertido', 1),
+(15, 'Rosca 2026', 1),
+(16, 'Concha', 1),
+(17, 'Pan de Muerto 2025', 1),
+(18, 'Pan de Muerto Choco 2025', 1),
+(19, 'Pan Elote', 1),
+(20, 'Pan Plátano', 67);
 
 -- 5. Insertar Insumos por Receta
 INSERT INTO receta_ingredientes (receta_id, ingrediente_id, cantidad_requerida) VALUES
