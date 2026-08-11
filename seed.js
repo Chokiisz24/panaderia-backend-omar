@@ -109,6 +109,12 @@ INSERT INTO recetas (id, nombre, total_recetas) VALUES
 (19, 'Pan Elote', 1),
 (20, 'Pan Plátano', 67);
 
+CREATE TABLE IF NOT EXISTS produccion_log (
+    id SERIAL PRIMARY KEY,
+    receta_id INT REFERENCES recetas(id) ON DELETE CASCADE,
+    cantidad_producida NUMERIC(10,2) NOT NULL,
+    fecha DATE DEFAULT CURRENT_DATE
+);
 -- 5. Insertar Insumos por Receta
 INSERT INTO receta_ingredientes (receta_id, ingrediente_id, cantidad_requerida) VALUES
 (1, 1, 10500), (1, 2, 4500), (1, 7, 360), (1, 8, 60), (1, 18, 4500), (1, 9, 9300), (1, 4, 150), (1, 5, 75), (1, 22, 90), (1, 23, 50),

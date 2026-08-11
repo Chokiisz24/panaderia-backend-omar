@@ -82,3 +82,43 @@ app.post('/api/mermas', async (req, res) => {
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Servidor corriendo en puerto ${PORT}`));
+
+// Registrar producción
+app.post('/api/produccion', async (req, res) => {
+  const { receta_id, cantidad_producida, fecha } = req.body;
+  try {
+    const result = await pool.query(
+      `INSERT INTO produccion_log (receta_id, cantidad_producida, fecha) 
+       VALUES ($1, $2, $3) RETURNING *`,
+      [receta_id, cantidad_producida, fecha || new Date()]
+    );
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send('Error al registrar producción');
+  }
+});
+
+// Obtener resumen de producción filtrado por fecha
+app.get('/api/produccion/resumen', async (req, res) => {
+  const { fecha } = req.query; // YYYY-MM-DD
+  try {
+    const result = await pool.query(
+      `SELECT 
+         r.id AS receta_id,
+         r.nombre,
+         r.total_recetas AS meta_diaria,
+         COALESCE(SUM(p.cantidad_producida), 0) AS total_producido
+       FROM recetas r
+       LEFT JOIN produccion_log p 
+         ON r.id = p.receta_id AND p.fecha = $1
+       GROUP BY r.id, r.nombre, r.total_recetas
+       ORDER BY r.nombre ASC`,
+      [fecha]
+    );
+    res.json(result.rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send('Error al obtener el resumen de producción');
+  }
+});
