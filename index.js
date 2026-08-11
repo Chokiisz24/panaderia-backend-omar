@@ -105,6 +105,10 @@ app.post('/api/produccion', async (req, res) => {
 // Obtener resumen de producción filtrado por fecha
 app.get('/api/produccion/resumen', async (req, res) => {
   const { fecha } = req.query; // YYYY-MM-DD
+  
+  // Validar que la fecha no venga undefined
+  const fechaConsulta = fecha || new Date().toISOString().split('T')[0];
+
   try {
     const result = await pool.query(
       `SELECT 
@@ -117,11 +121,12 @@ app.get('/api/produccion/resumen', async (req, res) => {
          ON r.id = p.receta_id AND p.fecha::date = $1::date
        GROUP BY r.id, r.nombre, r.total_recetas
        ORDER BY r.nombre ASC`,
-      [fecha]
+      [fechaConsulta]
     );
     res.json(result.rows);
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Error al obtener el resumen de producción' });
+    console.error('Error en SQL:', err);
+    // IMPORTANTE: Responder con JSON para evitar que la app crashee
+    res.status(500).json({ error: 'Error al consultar la base de datos' });
   }
 });
