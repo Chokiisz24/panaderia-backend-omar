@@ -87,15 +87,18 @@ app.listen(PORT, () => console.log(`Servidor corriendo en puerto ${PORT}`));
 app.post('/api/produccion', async (req, res) => {
   const { receta_id, cantidad_producida, fecha } = req.body;
   try {
+    // Si no viene fecha, usamos la fecha local actual en formato YYYY-MM-DD
+    const fechaRegistro = fecha || new Date().toISOString().split('T')[0];
+
     const result = await pool.query(
       `INSERT INTO produccion_log (receta_id, cantidad_producida, fecha) 
-       VALUES ($1, $2, $3) RETURNING *`,
-      [receta_id, cantidad_producida, fecha || new Date()]
+       VALUES ($1, $2, $3::date) RETURNING *`,
+      [receta_id, cantidad_producida, fechaRegistro]
     );
     res.json(result.rows[0]);
   } catch (err) {
     console.error(err);
-    res.status(500).send('Error al registrar producción');
+    res.status(500).json({ error: 'Error al registrar producción' });
   }
 });
 
@@ -111,7 +114,7 @@ app.get('/api/produccion/resumen', async (req, res) => {
          COALESCE(SUM(p.cantidad_producida), 0) AS total_producido
        FROM recetas r
        LEFT JOIN produccion_log p 
-         ON r.id = p.receta_id AND p.fecha = $1
+         ON r.id = p.receta_id AND p.fecha::date = $1::date
        GROUP BY r.id, r.nombre, r.total_recetas
        ORDER BY r.nombre ASC`,
       [fecha]
@@ -119,6 +122,6 @@ app.get('/api/produccion/resumen', async (req, res) => {
     res.json(result.rows);
   } catch (err) {
     console.error(err);
-    res.status(500).send('Error al obtener el resumen de producción');
+    res.status(500).json({ error: 'Error al obtener el resumen de producción' });
   }
 });
