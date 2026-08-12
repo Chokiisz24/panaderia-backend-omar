@@ -80,13 +80,14 @@ app.put('/api/ingredientes/:id', async (req, res) => {
   }
 });
 
-// 4. Obtener recetas CON sus ingredientes
+// 4. Obtener recetas CON sus ingredientes y su estado 'activa'
 app.get('/api/recetas', async (req, res) => {
   try {
     const query = `
       SELECT 
         r.id, 
         r.nombre,
+        COALESCE(r.activa, true) AS activa,
         COALESCE(
           json_agg(
             json_build_object(
@@ -97,7 +98,7 @@ app.get('/api/recetas', async (req, res) => {
         ) AS ingredientes
       FROM recetas r
       LEFT JOIN receta_ingredientes ri ON r.id = ri.receta_id
-      GROUP BY r.id
+      GROUP BY r.id, r.nombre, r.activa
       ORDER BY r.id ASC;
     `;
     const result = await pool.query(query);
@@ -107,6 +108,27 @@ app.get('/api/recetas', async (req, res) => {
   }
 });
 
+// NUEVO: Cambiar estado activa/inactiva de una receta
+app.put('/api/recetas/:id/estado', async (req, res) => {
+  const { id } = req.params;
+  const { activa } = req.body;
+
+  try {
+    const result = await pool.query(
+      'UPDATE recetas SET activa = $1 WHERE id = $2 RETURNING *',
+      [activa, id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Receta no encontrada' });
+    }
+
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error('Error al actualizar estado de receta:', err);
+    res.status(500).json({ error: 'Error al cambiar estado de la receta' });
+  }
+});
 // 5. Crear / Guardar una nueva receta con sus ingredientes
 app.post('/api/recetas', async (req, res) => {
   const { nombre, ingredientes } = req.body;
