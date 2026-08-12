@@ -23,7 +23,28 @@ app.get('/api/ingredientes', async (req, res) => {
   }
 });
 
-// 2. Actualizar stock_actual o stock_minimo de un ingrediente
+// 2. Crear un nuevo ingrediente (NUEVO)
+app.post('/api/ingredientes', async (req, res) => {
+  const { nombre, unidad_medida = 'g', stock_actual = 0, stock_minimo = 0 } = req.body;
+
+  if (!nombre || !nombre.trim()) {
+    return res.status(400).json({ error: 'El nombre del ingrediente es obligatorio' });
+  }
+
+  try {
+    const result = await pool.query(
+      `INSERT INTO ingredientes (nombre, unidad_medida, stock_actual, stock_minimo) 
+       VALUES ($1, $2, $3, $4) RETURNING *`,
+      [nombre.trim(), unidad_medida, stock_actual, stock_minimo]
+    );
+    res.status(201).json(result.rows[0]);
+  } catch (err) {
+    console.error('Error al crear ingrediente:', err);
+    res.status(500).json({ error: 'Error al crear el ingrediente: ' + err.message });
+  }
+});
+
+// 3. Actualizar stock_actual o stock_minimo de un ingrediente
 app.put('/api/ingredientes/:id', async (req, res) => {
   const { id } = req.params;
   const { stock_actual, stock_minimo } = req.body;
@@ -59,7 +80,7 @@ app.put('/api/ingredientes/:id', async (req, res) => {
   }
 });
 
-// 3. Obtener recetas CON sus ingredientes
+// 4. Obtener recetas CON sus ingredientes
 app.get('/api/recetas', async (req, res) => {
   try {
     const query = `
@@ -86,7 +107,7 @@ app.get('/api/recetas', async (req, res) => {
   }
 });
 
-// 4. Crear / Guardar una nueva receta con sus ingredientes (NUEVO)
+// 5. Crear / Guardar una nueva receta con sus ingredientes
 app.post('/api/recetas', async (req, res) => {
   const { nombre, ingredientes } = req.body;
 
@@ -97,15 +118,12 @@ app.post('/api/recetas', async (req, res) => {
   const client = await pool.connect();
 
   try {
-    // Iniciar transacción de base de datos
     await client.query('BEGIN');
 
-    // Insertar receta principal
     const insertRecetaQuery = 'INSERT INTO recetas (nombre) VALUES ($1) RETURNING id, nombre';
     const resReceta = await client.query(insertRecetaQuery, [nombre]);
     const recetaId = resReceta.rows[0].id;
 
-    // Insertar cada ingrediente de la receta
     const insertIngredienteQuery = `
       INSERT INTO receta_ingredientes (receta_id, ingrediente_id, cantidad_requerida)
       VALUES ($1, $2, $3)
@@ -119,7 +137,6 @@ app.post('/api/recetas', async (req, res) => {
       ]);
     }
 
-    // Confirmar cambios
     await client.query('COMMIT');
 
     res.status(201).json({
@@ -139,16 +156,14 @@ app.post('/api/recetas', async (req, res) => {
   }
 });
 
-// 5. Eliminar receta (NUEVO)
+// 6. Eliminar receta
 app.delete('/api/recetas/:id', async (req, res) => {
   const { id } = req.params;
   const client = await pool.connect();
 
   try {
     await client.query('BEGIN');
-    // Eliminar relaciones de la tabla intermedia primero
     await client.query('DELETE FROM receta_ingredientes WHERE receta_id = $1', [id]);
-    // Eliminar la receta principal
     await client.query('DELETE FROM recetas WHERE id = $1', [id]);
     await client.query('COMMIT');
 
@@ -162,7 +177,7 @@ app.delete('/api/recetas/:id', async (req, res) => {
   }
 });
 
-// 6. Registrar producción
+// 7. Registrar producción
 app.post('/api/produccion', async (req, res) => {
   const { receta_id, cantidad_producida, fecha } = req.body;
   try {
@@ -180,7 +195,7 @@ app.post('/api/produccion', async (req, res) => {
   }
 });
 
-// 7. Actualizar producción de un día específico
+// 8. Actualizar producción de un día específico
 app.put('/api/produccion/actualizar', async (req, res) => {
   const { receta_id, fecha, nueva_cantidad } = req.body;
 
@@ -206,7 +221,7 @@ app.put('/api/produccion/actualizar', async (req, res) => {
   }
 });
 
-// 8. Obtener resumen de producción filtrado por fecha
+// 9. Obtener resumen de producción filtrado por fecha
 app.get('/api/produccion/resumen', async (req, res) => {
   const { fecha } = req.query;
   const fechaConsulta = fecha || new Date().toISOString().split('T')[0];
