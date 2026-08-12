@@ -30,21 +30,18 @@ app.put('/api/ingredientes/:id', async (req, res) => {
 
   try {
     let result;
-    // Si la petición actualiza ambos valores
     if (stock_actual !== undefined && stock_minimo !== undefined) {
       result = await pool.query(
         'UPDATE ingredientes SET stock_actual = $1, stock_minimo = $2 WHERE id = $3 RETURNING *',
         [stock_actual, stock_minimo, id]
       );
     } 
-    // Si solo actualiza stock_actual
     else if (stock_actual !== undefined) {
       result = await pool.query(
         'UPDATE ingredientes SET stock_actual = $1 WHERE id = $2 RETURNING *',
         [stock_actual, id]
       );
     } 
-    // Si solo actualiza stock_minimo
     else if (stock_minimo !== undefined) {
       result = await pool.query(
         'UPDATE ingredientes SET stock_minimo = $1 WHERE id = $2 RETURNING *',
@@ -65,7 +62,6 @@ app.put('/api/ingredientes/:id', async (req, res) => {
 // 3. Obtener recetas CON sus ingredientes
 app.get('/api/recetas', async (req, res) => {
   try {
-    // Obtenemos las recetas y agrupamos sus ingredientes en formato JSON
     const query = `
       SELECT 
         r.id, 
@@ -90,25 +86,86 @@ app.get('/api/recetas', async (req, res) => {
   }
 });
 
-// 4. Registrar Merma
-app.post('/api/mermas', async (req, res) => {
-  const { tipo_item, descripcion_item, cantidad, motivo } = req.body;
+// 4. Crear / Guardar una nueva receta con sus ingredientes (NUEVO)
+app.post('/api/recetas', async (req, res) => {
+  const { nombre, ingredientes } = req.body;
+
+  if (!nombre || !ingredientes || !Array.isArray(ingredientes) || ingredientes.length === 0) {
+    return res.status(400).json({ error: 'Debes proporcionar un nombre y al menos un ingrediente' });
+  }
+
+  const client = await pool.connect();
+
   try {
-    const result = await pool.query(
-      'INSERT INTO mermas_log (tipo_item, descripcion_item, cantidad, motivo) VALUES ($1, $2, $3, $4) RETURNING *',
-      [tipo_item, descripcion_item, cantidad, motivo]
-    );
-    res.json(result.rows[0]);
+    // Iniciar transacción de base de datos
+    await client.query('BEGIN');
+
+    // Insertar receta principal
+    const insertRecetaQuery = 'INSERT INTO recetas (nombre) VALUES ($1) RETURNING id, nombre';
+    const resReceta = await client.query(insertRecetaQuery, [nombre]);
+    const recetaId = resReceta.rows[0].id;
+
+    // Insertar cada ingrediente de la receta
+    const insertIngredienteQuery = `
+      INSERT INTO receta_ingredientes (receta_id, ingrediente_id, cantidad_requerida)
+      VALUES ($1, $2, $3)
+    `;
+
+    for (const item of ingredientes) {
+      await client.query(insertIngredienteQuery, [
+        recetaId,
+        item.ingrediente_id,
+        item.cantidad_requerida
+      ]);
+    }
+
+    // Confirmar cambios
+    await client.query('COMMIT');
+
+    res.status(201).json({
+      mensaje: 'Receta guardada exitosamente',
+      receta: {
+        id: recetaId,
+        nombre: resReceta.rows[0].nombre,
+        ingredientes
+      }
+    });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    await client.query('ROLLBACK');
+    console.error('Error al guardar la receta:', err);
+    res.status(500).json({ error: 'Error interno al guardar la receta: ' + err.message });
+  } finally {
+    client.release();
   }
 });
 
-// 5. Registrar producción
+// 5. Eliminar receta (NUEVO)
+app.delete('/api/recetas/:id', async (req, res) => {
+  const { id } = req.params;
+  const client = await pool.connect();
+
+  try {
+    await client.query('BEGIN');
+    // Eliminar relaciones de la tabla intermedia primero
+    await client.query('DELETE FROM receta_ingredientes WHERE receta_id = $1', [id]);
+    // Eliminar la receta principal
+    await client.query('DELETE FROM recetas WHERE id = $1', [id]);
+    await client.query('COMMIT');
+
+    res.json({ mensaje: 'Receta eliminada correctamente' });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error('Error al eliminar la receta:', err);
+    res.status(500).json({ error: 'Error al eliminar la receta' });
+  } finally {
+    client.release();
+  }
+});
+
+// 6. Registrar producción
 app.post('/api/produccion', async (req, res) => {
   const { receta_id, cantidad_producida, fecha } = req.body;
   try {
-    // Si no viene fecha, usamos la fecha local actual en formato YYYY-MM-DD
     const fechaRegistro = fecha || new Date().toISOString().split('T')[0];
 
     const result = await pool.query(
@@ -123,20 +180,18 @@ app.post('/api/produccion', async (req, res) => {
   }
 });
 
-// 6. Actualizar producción de un día específico (Lógica de Edición)
+// 7. Actualizar producción de un día específico
 app.put('/api/produccion/actualizar', async (req, res) => {
   const { receta_id, fecha, nueva_cantidad } = req.body;
 
   try {
-    // Reemplazamos los registros previos de ese día para esa receta
     await pool.query(
       'DELETE FROM produccion_log WHERE receta_id = $1 AND fecha::date = $2::date',
       [receta_id, fecha]
     );
 
     const cantidadNumerica = parseFloat(nueva_cantidad);
-    
-    // Si la nueva cantidad es mayor a 0, insertamos el nuevo valor
+
     if (cantidadNumerica > 0) {
       await pool.query(
         'INSERT INTO produccion_log (receta_id, cantidad_producida, fecha) VALUES ($1, $2, $3::date)',
@@ -151,11 +206,9 @@ app.put('/api/produccion/actualizar', async (req, res) => {
   }
 });
 
-// 7. Obtener resumen de producción filtrado por fecha
+// 8. Obtener resumen de producción filtrado por fecha
 app.get('/api/produccion/resumen', async (req, res) => {
-  const { fecha } = req.query; // YYYY-MM-DD
-  
-  // Validar que la fecha no venga undefined
+  const { fecha } = req.query;
   const fechaConsulta = fecha || new Date().toISOString().split('T')[0];
 
   try {
@@ -179,6 +232,6 @@ app.get('/api/produccion/resumen', async (req, res) => {
   }
 });
 
-// Iniciar servidor al final del archivo
+// Iniciar servidor
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Servidor corriendo en puerto ${PORT}`));
