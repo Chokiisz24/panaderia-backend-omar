@@ -23,16 +23,40 @@ app.get('/api/ingredientes', async (req, res) => {
   }
 });
 
-// 2. Actualizar el stock de un ingrediente (ej. desde la tabla)
+// 2. Actualizar stock_actual o stock_minimo de un ingrediente
 app.put('/api/ingredientes/:id', async (req, res) => {
   const { id } = req.params;
-  const { stock_actual } = req.body;
+  const { stock_actual, stock_minimo } = req.body;
+
   try {
-    const result = await pool.query(
-      'UPDATE ingredientes SET stock_actual = $1 WHERE id = $2 RETURNING *',
-      [stock_actual, id]
-    );
-    res.json(result.rows[0]);
+    let result;
+    // Si la petición actualiza ambos valores
+    if (stock_actual !== undefined && stock_minimo !== undefined) {
+      result = await pool.query(
+        'UPDATE ingredientes SET stock_actual = $1, stock_minimo = $2 WHERE id = $3 RETURNING *',
+        [stock_actual, stock_minimo, id]
+      );
+    } 
+    // Si solo actualiza stock_actual
+    else if (stock_actual !== undefined) {
+      result = await pool.query(
+        'UPDATE ingredientes SET stock_actual = $1 WHERE id = $2 RETURNING *',
+        [stock_actual, id]
+      );
+    } 
+    // Si solo actualiza stock_minimo
+    else if (stock_minimo !== undefined) {
+      result = await pool.query(
+        'UPDATE ingredientes SET stock_minimo = $1 WHERE id = $2 RETURNING *',
+        [stock_minimo, id]
+      );
+    }
+
+    if (result && result.rows.length > 0) {
+      res.json(result.rows[0]);
+    } else {
+      res.status(400).json({ error: 'No se enviaron datos válidos para actualizar' });
+    }
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

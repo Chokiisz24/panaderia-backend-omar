@@ -98,7 +98,7 @@ INSERT INTO ingredientes (id, nombre, stock_actual, stock_minimo, stock_maximo, 
 (41, 'THAN ZONG', 10000, 1000, 20000, 'g'),
 (42, 'ESCE. NARAN MANTE', 5000, 500, 10000, 'ml');
 
--- 4. Registro de Recetas y Metas (Configurado con sus lotes base por defecto)
+-- 4. Registro de Recetas y Metas
 INSERT INTO recetas (id, nombre, total_recetas) VALUES
 (1, 'Masa Baguette', 15),
 (2, 'Masa Centeno', 1),
@@ -157,23 +157,24 @@ INSERT INTO receta_ingredientes (receta_id, ingrediente_id, cantidad_requerida) 
 (16, 1, 1000), (16, 6, 190), (16, 12, 200), (16, 15, 250), (16, 8, 60), (16, 21, 10), (16, 7, 12), (16, 13, 50), (16, 14, 200), (16, 38, 10),
 -- 17. Pan de Muerto 2025
 (17, 1, 2000), (17, 6, 380), (17, 12, 400), (17, 15, 500), (17, 39, 2), (17, 40, 20), (17, 42, 28), (17, 8, 100), (17, 21, 20), (17, 13, 100), (17, 14, 400),
--- 18. Pan de Muerto Choco 2025
-(18, 1, 1800), (18, 28, 150), (18, 6, 380), (18, 12, 400), (18, 15, 500), (18, 39, 2), (18, 40, 20), (18, 42, 28), (18, 8, 100), (18, 21, 20), (18, 13, 100), (18, 14, 400),
+-- 18. Pan de Muerto Choco 2025 (Levadura ajustada a 140g)
+(18, 1, 1800), (18, 28, 150), (18, 6, 380), (18, 12, 400), (18, 15, 500), (18, 39, 2), (18, 40, 20), (18, 42, 28), (18, 8, 140), (18, 21, 20), (18, 13, 100), (18, 14, 400),
 -- 19. Pan Elote
 (19, 31, 6000), (19, 14, 4000), (19, 35, 110), (19, 15, 1800), (19, 34, 100), (19, 33, 7000),
 -- 20. Pan Plátano
 (20, 2, 3333), (20, 14, 3333), (20, 6, 3333), (20, 17, 3333), (20, 32, 5000), (20, 36, 67), (20, 35, 67);
 
--- 6. Actualizar las secuencias de ID
+-- 6. Actualizar las secuencias de ID de PostgreSQL
 SELECT setval('ingredientes_id_seq', (SELECT MAX(id) FROM ingredientes));
 SELECT setval('recetas_id_seq', (SELECT MAX(id) FROM recetas));
+SELECT setval('receta_ingredientes_id_seq', (SELECT MAX(id) FROM receta_ingredientes));
 `;
 
 async function runSeed() {
   try {
-    console.log('Conectando a la base de datos de Render...');
+    console.log('Conectando a la base de datos...');
     await pool.query(sql);
-    console.log('¡Base de datos y recetas actualizadas con éxito!');
+    console.log('¡Base de datos limpia y estructurada con éxito!');
   } catch (err) {
     console.error('Error al poblar la base de datos:', err);
   } finally {
